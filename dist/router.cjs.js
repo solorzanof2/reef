@@ -1,4 +1,4 @@
-/*! Reef v7.3.3 | (c) 2020 Chris Ferdinandi | MIT License | http://github.com/cferdinandi/reef */
+/*! Reef v7.6.2 | (c) 2020 Chris Ferdinandi | MIT License | http://github.com/cferdinandi/reef */
 'use strict';
 
 //
@@ -173,9 +173,6 @@ var scrollToAnchor = function (hash, url) {
  * @return {String}      The href
  */
 var getHref = function (url, root, hash) {
-	if ((hash && url.pathname.slice(-5) === '.html') || url.hash.indexOf('#!') === 0) {
-		url = getLinkElem(url.hash.slice(2), root);
-	}
 	var href = cleanURL(url.pathname);
 	if (!root.length) return href;
 	root = cleanURL(root);
@@ -186,6 +183,20 @@ var getHref = function (url, root, hash) {
 };
 
 /**
+ * Get a cleaned up URL object
+ * @param  {URL}     url  The URL object
+ * @param  {String}  root The root domain
+ * @param  {Boolean} hash If true, as hash is used
+ * @return {URL}          The URL object
+ */
+var getURL = function (url, root, hash) {
+	if ((hash && url.pathname.slice(-5) === '.html') || url.hash.indexOf('#!') === 0) {
+		url = getLinkElem(url.hash.slice(2), root);
+	}
+	return url;
+};
+
+/**
  * Get the route from the URL
  * @param  {URL} url      The URL object
  * @param  {Array} routes The routes
@@ -193,10 +204,14 @@ var getHref = function (url, root, hash) {
  * @return {Object}       The matching route
  */
 var getRoute = function (url, routes, root, hash) {
-	var href = getHref(url, root, hash);
+	url = getURL(url, root, hash);
+	var href = getHref(url, root);
 	var matches = findMatchedRoutes(href, routes);
 	if (!matches.length) return;
 	var route = Reef.clone(matches[0].route);
+	if (route.redirect) {
+		return getRoute(getLinkElem(typeof route.redirect === 'function' ? route.redirect(route) : route.redirect, root), routes, root, hash);
+	}
 	route.params = matches[0].params;
 	route.search = getParams(url);
 	return route;
@@ -574,4 +589,11 @@ Reef.Router.prototype.addComponent = function (component) {
  */
 Reef.Router.prototype.navigate = function (url) {
 	updateRoute(getLinkElem(url, this.root), this);
+};
+
+/**
+ * Update the title
+ */
+Reef.Router.prototype.updateTitle = function () {
+	updateTitle(this.current, this);
 };
